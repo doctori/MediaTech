@@ -8,7 +8,7 @@ function start(route, handle){
 	server.get('/messages',requestHandlers.getMessages);
 	server.post('/messages',requestHandlers.postMessage);
 
-	server.listen(8888, function(){
+	server.listen(80, function(){
 		console.log('%s listenning at %s',server.name, server.url);
 	});
 }
