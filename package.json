@@ -1,0 +1,11 @@
+{
+	"name": "mediaTech",
+	"description": "Media Tech applicaiton",
+	"version" : "0.0.1",
+	"private" : true,
+	"dependencies": {
+		"restify": "2.x",
+		"mongoose": "3.x",
+		"connect": "2.x"
+	}
+}
