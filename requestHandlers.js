@@ -9,23 +9,29 @@ var mongoose = require('mongoose');
                 date : Date
         });
         var Message = mongoose.model('messages',MessageSchema);
-	
+	function getIndex(req,res,next){
+		res.send("éllow Vorld");
+	}
 	function getMessages(req, res, next) {
 		var filter = "";		
+		var hiker = "";
 		if(req.params.message === undefined){
-			var message = '{$regex : ".*"}';
+			var message = '.*';
 		}else{
 			var message = req.params.message;
 		}
 		if(req.params.hiker === undefined){
-			var hiker = "{$regex : '.*'}";	
+		Message.find().sort('-date').exec(function (arr,data){
+                                res.send(data);
+                        });	
 		}else{
-			var hiker = req.params.hiker;
-		}
-                Message.find({'hiker' : hiker}).sort({date:-1}).execFind(function (arr,data){
-                        res.send(data);
-                });
+			hiker = req.params.hiker;
+			 Message.find({'hiker' : hiker}).sort('-date').exec(function (arr,data){
+	                        res.send(data);
+	                });
 
+		}
+	return next();
         }
 
         function postMessage(req,res,next){
@@ -42,4 +48,4 @@ var mongoose = require('mongoose');
          }
 exports.postMessage = postMessage;
 exports.getMessages = getMessages;
-
+exports.getIndex = getIndex;

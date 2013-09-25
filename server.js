@@ -5,7 +5,8 @@ function start(route, handle){
 	var port = process.env.port || 1337;
 	server.use(restify.bodyParser());
 	server.use(restify.fullResponse());
-	server.get('/messages/:hiker',requestHandlers.getMessages)
+	server.get('/', requestHandlers.getIndex);
+	server.get('/messages/:hiker',requestHandlers.getMessages);
 	server.get('/messages',requestHandlers.getMessages);
 	server.post('/messages',requestHandlers.postMessage);
 
