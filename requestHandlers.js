@@ -8,7 +8,7 @@ var mongoose = require('mongoose');
                 hiker: String,
                 date : Date
         });
-        var Message = mongoose.model('Message',MessageSchema);
+        var Message = mongoose.model('messages',MessageSchema);
 	
 	function getMessages(req, res, next) {
 		var filter = "";		
@@ -18,7 +18,7 @@ var mongoose = require('mongoose');
 			var message = req.params.message;
 		}
 		if(req.params.hiker === undefined){
-			var hiker = '{$regex : ".*"}';	
+			var hiker = "{$regex : '.*'}";	
 		}else{
 			var hiker = req.params.hiker;
 		}
