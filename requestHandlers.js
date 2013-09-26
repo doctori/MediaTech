@@ -1,14 +1,6 @@
 var restify = require('restify');
-var mongoose = require('mongoose');
-        var config = require('./config');
-        db = mongoose.connect(config.creds.mongoose_auth_local);
-        Schema = mongoose.Schema;
-        var MessageSchema = new Schema({
-                message: String,
-                hiker: String,
-                date : Date
-        });
-        var Message = mongoose.model('messages',MessageSchema);
+var models = require('./models');
+	
 	function getIndex(req,res,next){
 		res.send("éllow Vorld");
 	}
@@ -21,12 +13,12 @@ var mongoose = require('mongoose');
 			var message = req.params.message;
 		}
 		if(req.params.hiker === undefined){
-		Message.find().sort('-date').exec(function (arr,data){
+		models.Message.find().sort('-date').exec(function (arr,data){
                                 res.send(data);
                         });	
 		}else{
 			hiker = req.params.hiker;
-			 Message.find({'hiker' : hiker}).sort('-date').exec(function (arr,data){
+			 models.Message.find({'hiker' : hiker}).sort('-date').exec(function (arr,data){
 	                        res.send(data);
 	                });
 
@@ -35,7 +27,7 @@ var mongoose = require('mongoose');
         }
 
         function postMessage(req,res,next){
-                var message = new Message();
+                var message = new models.Message();
                 if(req.params.message === undefined){
 			return next(new restify.InvalidArgumentError(' Message Must Be Supplied'))
 		}
