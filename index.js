@@ -1,4 +1,2 @@
-var server = require("./server"),
-    router = require("./router"),
-    requestHandlers = require("./requestHandlers")
+var server = require("./server");
 	server.start();

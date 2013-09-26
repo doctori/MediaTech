@@ -4,6 +4,40 @@ var models = require('./models');
 	function getIndex(req,res,next){
 		res.send("éllow Vorld");
 	}
+	function postVinyles(req, res, next) {
+		var V = new models.Vinyles();
+		V.code = req.params.code;
+		V.title = req.params.title;
+		V.year = req.params.year;
+		V.description = req.params.description;
+		V.picture = req.params.picture;
+		V.save(function (){
+			res.send(201,req.body);
+			});
+		
+	}
+	function getVinyles(req, res, next) {
+		models.Vinyles.find().sort('-year').exec(function (arr,data){
+			res.send(data);
+		});
+	}
+	function postArtists(req, res, next){
+		var A = new models.Artists();
+		A.name = req.params.name;
+		A.type = req.params.type; 
+		A.years.start = req.params.years.start;
+		A.years.end = req.params.years.end;
+		A.description = req.params.description;
+		A.picture = req.params.picture;
+		A.save(function(){
+			res.send(201,req.body);
+			});
+	}
+	function getArtists(req, res, next){
+		models.Artists.find().sort('name').exec(function (arr,data){
+			res.send(data);
+		});
+	}
 	function getMessages(req, res, next) {
 		var filter = "";		
 		var hiker = "";
@@ -39,5 +73,9 @@ var models = require('./models');
                         });
          }
 exports.postMessage = postMessage;
+exports.postVinyles = postVinyles;
+exports.postArtists = postArtists;
+exports.getArtists = getArtists;
+exports.getVinyles = getVinyles;
 exports.getMessages = getMessages;
 exports.getIndex = getIndex;
