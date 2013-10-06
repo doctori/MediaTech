@@ -106,7 +106,7 @@ function getIndex(req,res,next){
                                 rows.push(row);
                         });
                         query.on('end',function(result){
-                                res.send(201,rows);
+                                res.send(200,rows);
                                 done();
                         });
                 });
