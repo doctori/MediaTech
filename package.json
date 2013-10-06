@@ -6,7 +6,8 @@
 	"dependencies": {
 		"restify": "2.x",
 		"mongoose": "3.x",
-		"connect": "2.x"
+		"connect": "2.x",
+		"pg": "2.x"
 	},
 	"engine": "node 0.10.18"
 }
