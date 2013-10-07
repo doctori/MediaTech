@@ -1,5 +1,6 @@
 var restify = require('restify');
 var config = require('./config');
+var utils = require('./utils');
 var pg = require('pg');
 
 var client  = new pg.Client(config.creds.psql_con_string);
@@ -8,16 +9,15 @@ function getIndex(req,res,next){
 	}
 	function postVinyles(req, res, next) {
 		pg.connect(config.creds.psql_con_string,function(err,client,done){
-		        if(err){
-        		        console.log('Could not connect to postgresql', err);
-        	        }
-			var v = new Object();
-			v.code = req.params.code;
-			v.artist = req.params.artist;
-			v.title = req.params.title;
-			v.year = req.params.year;
-			v.description = req.params.description;
-			v.picture = req.params.picture;
+		        utils.utils.psqlConnectErrorHandler(err);
+			var v = {
+				code : req.params.code,
+				artist : req.params.artist,
+				title : req.params.title,
+				year : req.params.year,
+				description : req.params.description,
+				picture : req.params.picture
+			}
 			var artist_query = client.query({ name : "get_artist",text:"SELECT id FROM mediatech.artists WHERE name = $1;",values:[v.artist]})
 			var artist_id ;
 			artist_query.on('row',function(row){
@@ -42,14 +42,11 @@ function getIndex(req,res,next){
 			}
 			});
 		});
-		
 	}
 	function getVinyles(req, res, next) {
 		pg.connect(config.creds.psql_con_string,function(err,client,done){
-                        if(err){
-                                console.log('Could not connect to postgresql', err);
-                        }
-			var query = client.query('SELECT * FROM mediatech.vinyles');
+                         utils.psqlConnectErrorHandler(err);
+			var query = client.query('SELECT * FROM mediatech.vinyles ORDER BY id');
 			query.on('error', function(error){
 				console.error('error running query',error);
 			});
@@ -75,12 +72,13 @@ function getIndex(req,res,next){
 			type : req.params.type
 		}
 		  pg.connect(config.creds.psql_con_string,function(err,client,done){
-                        if(err){
-                                console.log('Could not connect to postgresql', err);
-				res.send('501',err);
-                        }
-                        var query = client.query({ name :"add_record", text:"INSERT INTO mediatech.artists (name,dates,description,type) VALUES ($1,ARRAY[$2,$3]::int[],$4,$5);",values:[A.name,Number(A.years.start,10),Number(A.years.end,10),A.description,A.type]});
-                        query.on('error', function(error){
+                utils.psqlConnectErrorHandler(err);
+                var query = client.query({ 
+					name :"add_record",
+					text:"INSERT INTO mediatech.artists (name,dates,description,type) VALUES ($1,ARRAY[$2,$3]::int[],$4,$5);",
+					values:[A.name,Number(A.years.start,10),Number(A.years.end,10),A.description,A.type]
+				});
+                query.on('error', function(error){
                                 res.send(501,error);
 				console.error('error running query',error);
 				done();
@@ -92,12 +90,36 @@ function getIndex(req,res,next){
 			});
 		});
 	}
-	function getArtists(req, res, next){
+	function postGenres(req, res, next){
+		var G = {
+			name : req.params.name,
+			description : req.params.description
+		}
+		  pg.connect(config.creds.psql_con_string,function(err,client,done){
+                utils.psqlConnectErrorHandler(err);
+                var query = client.query({ 
+					name :"add_genre", 
+					text:"INSERT INTO mediatech.genres (name,description) VALUES ($1,$2);",
+					values:[G.name,G.description]
+				});
+                query.on('error', function(error){
+                                res.send(501,error);
+				console.error('error running query',error);
+				done();
+				next();
+                        });
+			query.on('end',function(result){
+				res.send(201,result);
+				done();
+				next();
+			});
+		});
+	}
+	function getGenres(req, res, next){
+		console.log(req.params);
 		 pg.connect(config.creds.psql_con_string,function(err,client,done){
-                        if(err){
-                                console.log('Could not connect to postgresql', err);
-                        }
-                        var query = client.query('SELECT * FROM mediatech.artists');
+                        utils.psqlConnectErrorHandler(err);
+                        var query = client.query('SELECT * FROM mediatech.genres ORDER BY id');
                         query.on('error', function(error){
                                 console.error('error running query',error);
                         });
@@ -112,29 +134,100 @@ function getIndex(req,res,next){
                 });
 
 	}
-	function getMessages(req, res, next) {
-		var filter = "";		
-		var hiker = "";
-		if(req.params.message === undefined){
-			var message = '.*';
-		}else{
-			var message = req.params.message;
-		}
-		if(req.params.hiker === undefined){
-		models.Message.find().sort('-date').exec(function (arr,data){
-                                res.send(data);
-                        });	
-		}else{
-			hiker = req.params.hiker;
-			 models.Message.find({'hiker' : hiker}).sort('-date').exec(function (arr,data){
-	                        res.send(data);
-	                });
+	function getArtists(req, res, next){
+		 pg.connect(config.creds.psql_con_string,function(err,client,done){
+                        utils.psqlConnectErrorHandler(err);
+                        var query = client.query('SELECT * FROM mediatech.artists ORDER BY id');
+                        query.on('error', function(error){
+                                console.error('error running query',error);
+                        });
+                        var rows = [];
+                        query.on('row',function(row){
+                                rows.push(row);
+                        });
+                        query.on('end',function(result){
+                                res.send(200,rows);
+                                done();
+                        });
+                });
 
+	}
+	function updateVinyles(req,res,next){
+	pg.connect(config.creds.psql_con_string,function(err,client,done){
+		utils.psqlConnectErrorHandler(err);
+		if(req.params.vinyle_id === undefined){
+			console.error("fuck it");
+		}else{
+			console.log(req.params.vinyle_id);
+			var query = client.query({name : 'get_one_record', text : 'SELECT id FROM mediatech.vinyles WHERE id = $1',values :[req.params.vinyle_id]});
+			query.on('error', function(error){
+				   console.error('error running query',error);
+				});
+			query.on('end',function(result){
+				if(result.rowCount != 1){
+					res.send(500);
+					done();
+				}else{
+					var v = {
+						id : req.params.vinyle_id,
+						serial_nbr : req.params.code,
+						artist : req.params.artist,
+						genre : req.params.genre,
+						title : req.params.title,
+						year : req.params.year,
+						description : req.params.description,
+						img : req.params.picture,
+						disc_nbr : req.params.disq_nbr
+					}
+					var query_SET = "SET (";
+					var query_VALUE = " = (";
+					var values = new Array();
+					var Vkeys = new Array();
+						for(var key in v){
+							if(key != 'id'){
+								if(v[key] !== undefined){
+									Vkeys.push(key);
+								}
+							}
+						}
+						var i = 1;
+						Vkeys.forEach(function(key,index,array){
+							query_SET += key;
+							query_VALUE += " $"+(index+1);
+							i++;
+							values.push(v[key]);
+							if(index<array.length-1){
+								query_SET +=",";
+								query_VALUE +=",";
+							}else{
+								query_SET +=")";
+								query_VALUE +=")";
+							}
+						});
+					var query_WHERE = " WHERE id = "+v.id+";";
+					var query_string = "UPDATE mediatech.vinyles "+query_SET+query_VALUE+query_WHERE;
+					console.log(query_string);
+					console.log(values);
+					var query = client.query({
+						name : 'set_one_record', 
+						text : query_string.toString(),
+						values : values});
+					query.on('error',function(err){
+						res.send(501,err);
+						console.error(err);
+					});
+					query.on('row',function(row){
+						console.log(row);
+						});
+					query.on('end',function(result){
+						res.send(201,result);
+					});
+				}
+			});
 		}
-	return next();
-        }
-
-        function postMessage(req,res,next){
+	});
+}
+	  function postMessage(req,res,next){
                 var message = new models.Message();
                 if(req.params.message === undefined){
 			return next(new restify.InvalidArgumentError(' Message Must Be Supplied'))
@@ -148,8 +241,10 @@ function getIndex(req,res,next){
          }
 exports.postMessage = postMessage;
 exports.postVinyles = postVinyles;
+exports.updateVinyles = updateVinyles;
 exports.postArtists = postArtists;
+exports.postGenres = postGenres;
+exports.getGenres = getGenres;
 exports.getArtists = getArtists;
 exports.getVinyles = getVinyles;
-exports.getMessages = getMessages;
 exports.getIndex = getIndex;
