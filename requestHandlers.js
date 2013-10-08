@@ -90,6 +90,88 @@ function getIndex(req,res,next){
 			});
 		});
 	}
+	function updateArtists(req,res,next){
+	pg.connect(config.creds.psql_con_string,function(err,client,done){
+		utils.psqlConnectErrorHandler(err);
+		if(req.params.artist_id === undefined){
+			console.error("fuck it");
+		}else{
+			var query = client.query({
+				name : 'get_one_artist',
+				text : 'SELECT id FROM mediatech.artists WHERE id = $1',
+				values :[req.params.artist_id]});
+			query.on('error', function(error){
+				   console.error('error running query',error);
+				});
+			query.on('end',function(result){
+				if(result.rowCount != 1){
+
+					res.send(500);
+					done();
+				}else{
+					var v = {
+						id : req.params.artist_id,
+						name : req.params.name,
+						components : req.params.components,
+						genre : req.params.genre,
+						type : req.params.type,
+						dates : [req.params.years.start,req.params.years.end],
+						description : req.params.description,
+						img : req.params.images
+					}
+					console.log(req);
+					var query_SET = "SET (";
+					var query_VALUE = " = (";
+					var values = new Array();
+					var Vkeys = new Array();
+						for(var key in v){
+							if(key != 'id'){
+								if(v[key] !== undefined){
+									Vkeys.push(key);
+								}
+							}
+						}
+						var i = 1;
+						Vkeys.forEach(function(key,index,array){
+							//if we find an array we have to go deeper
+							if(v[key].isArray){
+								console.log("HURRAY");
+							}
+								query_SET += key;
+							query_VALUE += " $"+(index+1);
+							values.push(v[key]);
+							i++;
+							if(index<array.length-1){
+								query_SET +=",";
+								query_VALUE +=",";
+							}else{
+								query_SET +=")";
+								query_VALUE +=")";
+							}
+						});
+					var query_WHERE = " WHERE id = "+v.id+";";
+					var query_string = "UPDATE mediatech.artists "+query_SET+query_VALUE+query_WHERE;
+					console.log(query_string);
+					console.log(values);
+					var query = client.query({
+						name : 'set_one_artist', 
+						text : query_string.toString(),
+						values : values});
+					query.on('error',function(err){
+						res.send(501,err);
+						console.error(err);
+					});
+					query.on('row',function(row){
+						console.log(row);
+						});
+					query.on('end',function(result){
+						res.send(201,result);
+					});
+				}
+			});
+		}
+	});
+}
 	function postGenres(req, res, next){
 		var G = {
 			name : req.params.name,
@@ -241,6 +323,7 @@ function getIndex(req,res,next){
          }
 exports.postMessage = postMessage;
 exports.postVinyles = postVinyles;
+exports.updateArtists = updateArtists;
 exports.updateVinyles = updateVinyles;
 exports.postArtists = postArtists;
 exports.postGenres = postGenres;
