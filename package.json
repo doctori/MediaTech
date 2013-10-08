@@ -1,6 +1,6 @@
 {
 	"name": "mediaTech",
-	"description": "Media Tech applicaiton",
+	"description": "Media Tech application",
 	"version" : "0.0.1",
 	"private" : true,
 	"dependencies": {
@@ -9,5 +9,7 @@
 		"connect": "2.x",
 		"pg": "2.x"
 	},
-	"engine": "node 0.10.18"
+	"engines": {
+        "node": 0.10.18"
+    }
 }
