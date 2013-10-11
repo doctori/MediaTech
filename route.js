@@ -9,6 +9,7 @@ module.exports = function (server,requestHandlers) {
 	server.post('/genres',requestHandlers.postGenres);
 	server.get('/genres',requestHandlers.getGenres);
 	server.get('/vinyles',requestHandlers.getVinyles);
+	server.get('/vinyles/:filterName/:filterValue',requestHandlers.getVinyles);
 	server.get('/artists',requestHandlers.getArtists);
 	server.post('/artists',requestHandlers.postArtists);
 }

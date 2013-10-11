@@ -44,9 +44,25 @@ function getIndex(req,res,next){
 		});
 	}
 	function getVinyles(req, res, next) {
+		var queryBegining = 'SELECT * FROM mediatech.vinyles';
+		var queryEnding = ' ORDER BY id';
+		var queryMidle = '';
+		if(req.params.filterName !== undefined){
+                                        if(req.params.filterValue === undefined){
+                                                console.error("No Value to get Vinyl filter");
+                                        }else{
+                                                queryMidle = ' WHERE '+req.params.filterName+' = '+req.params.filterValue;
+                                                console.log('Filter '+req.params.filterName+' with value '+req.params.filterValue);
+                                        }
+                                }
+		
+		console.log('pouet2');
 		pg.connect(config.creds.psql_con_string,function(err,client,done){
                          utils.psqlConnectErrorHandler(err);
-			var query = client.query('SELECT * FROM mediatech.vinyles ORDER BY id');
+			console.log('pouet3');
+			var fullquery = queryBegining+queryMidle+queryEnding; 
+			console.log(fullquery);
+			var query = client.query(fullquery);
 			query.on('error', function(error){
 				console.error('error running query',error);
 			});
@@ -309,7 +325,7 @@ function getIndex(req,res,next){
 		}
 	});
 }
-	  function postMessage(req,res,next){
+	function postMessage(req,res,next){
                 var message = new models.Message();
                 if(req.params.message === undefined){
 			return next(new restify.InvalidArgumentError(' Message Must Be Supplied'))
