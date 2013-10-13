@@ -7,9 +7,29 @@ var client  = new pg.Client(config.creds.psql_con_string);
 function getIndex(req,res,next){
 		res.send("H&low Vorld");
 	}
+	function postUser(req,res,next) {
+		console.log('inside PostUSer');
+		pg.connect(config.creds.psql_con_string,function(err,client,done){
+			utils.psqlConnectErrorHandler(err);
+			var u = {
+				name : req.params.name,
+				email : req.params.email,
+				bio :	req.params.bio
+			}
+			var user_query = client.query({
+				name : 'put_user',
+				text : 'INSERT INTO mediatech.users ( name, email, bio, creationDate)	VALUES ($1, $2, $3, NOW())',
+				values:[u.name, u.email, u.bio]
+				},function(err,result){
+					utils.psqlSQLExecutionErrorHandler(err);
+					done()
+					res.send(201);
+			});
+		}); 
+	}
 	function postVinyles(req, res, next) {
 		pg.connect(config.creds.psql_con_string,function(err,client,done){
-		        utils.utils.psqlConnectErrorHandler(err);
+		        utils.psqlConnectErrorHandler(err);
 			var v = {
 				code : req.params.code,
 				artist : req.params.artist,
@@ -18,7 +38,10 @@ function getIndex(req,res,next){
 				description : req.params.description,
 				picture : req.params.picture
 			}
-			var artist_query = client.query({ name : "get_artist",text:"SELECT id FROM mediatech.artists WHERE name = $1;",values:[v.artist]})
+			var artist_query = client.query({
+				name : "get_artists",
+				text:"SELECT id FROM mediatech.artists WHERE name = $1;",
+				values:[v.artist]})
 			var artist_id ;
 			artist_query.on('row',function(row){
 				artist_id = row.id;
@@ -27,19 +50,23 @@ function getIndex(req,res,next){
 				if(result.rowCount == 1){
 			 		console.log('artist found');
 					
-					var query = client.query({ name :"add_record", text:"INSERT INTO mediatech.vinyles (title,serial_nbr,year,description,img,artist) VALUES ($1,$2,$3,$4,$5,$6);",values:[v.title,v.code,v.year,v.description,v.picture,artist_id]},function(err,result){
-                        	if(err){
-                        	        return console.error('error running query',err);
-                        	        client.end();
-					res.send(501,err);
-                        	}
-                        	done();
-                        	res.send(201);
-				});
-			}else{
-			done();
-				res.send(403,"No Artist Found");
-			}
+					var query = client.query({ 
+						name :"add_record", 
+						text:"INSERT INTO mediatech.vinyles (title,serial_nbr,year,description,img,artist) VALUES ($1,$2,$3,$4,$5,$6);",
+						values:[v.title,v.code,v.year,v.description,v.picture,artist_id]
+					},function(err,result){
+                        			if(err){
+                        	        		return console.error('error running query',err);
+                        	        		client.end();
+							res.send(501,err);
+                        			}
+                        			done();
+                        			res.send(201);
+					});
+				}else{
+					done();
+					res.send(403,"No Artist Found");
+				}
 			});
 		});
 	}
@@ -339,6 +366,7 @@ function getIndex(req,res,next){
          }
 exports.postMessage = postMessage;
 exports.postVinyles = postVinyles;
+exports.postUser    = postUser;
 exports.updateArtists = updateArtists;
 exports.updateVinyles = updateVinyles;
 exports.postArtists = postArtists;
