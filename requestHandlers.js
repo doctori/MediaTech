@@ -27,68 +27,240 @@ function getIndex(req,res,next){
 			});
 		}); 
 	}
+	function getUsers(req,res,next){
+		
+		pg.connect(config.creds.psql_con_string,function(err,client,done){
+			var query = 'SELECT * FROM mediatech.users ORDER BY creationdate DESC';
+			 utils.psqlConnectErrorHandler(err);
+			 console.log(query);
+			var query = client.query(query);
+			query.on('error', function(error){
+				console.error('error running query',error);
+			});
+			var rows = [];
+			query.on('row',function(row){
+				rows.push(row);
+			});
+			query.on('end',function(result){
+				res.send(rows);
+				done();
+			});
+		});
+	}
+	function getMediaId(req, res, next){
+		if(req.params.type !== undefined && req.params.sub_id !== undefined){
+			pg.connect(config.creds.psql_con_string,function(err,client,done){
+				utils.psqlConnectErrorHandler(err);
+				var query = "SELECT media_typed_id FROM mediatech.medias_typed WHERE type = $1 AND sub_id = $2;"
+				var get_media_id = client.query({
+					name : "get_media_id",
+					text : query,
+					values : [req.params.type, req.params.sub_id]
+				});
+				get_media_id.on('row',function(result){
+					res.send(201,result.media_typed_id);
+				});
+			});
+		}
+	}
+	function setMediaId(mediaType,mediaSubId,res,user,callback){
+		pg.connect(config.creds.psql_con_string,function(err,client,done){
+			utils.psqlConnectErrorHandler(err);
+			var query = "SELECT media_typed_id FROM mediatech.medias_typed WHERE type = $1 AND sub_id = $2";
+			var get_media_ID = client.query({
+				name: "get_media_id",
+				text:query,
+				values:[mediaType,mediaSubId]
+			});
+			get_media_ID.on('end',function(result){
+				if(result.rowCount == 0){
+					var insertQuery = 'INSERT INTO mediatech.medias_typed (type,sub_id, media_typed_id) VALUES ($1,$2,DEFAULT) RETURNING media_typed_id';
+					var insert_media_ID = client.query({
+						name: "insert_media_id",
+						text: insertQuery,
+						values:[mediaType,mediaSubId]
+					});
+					insert_media_ID.on('row',function(row){
+						console.log(row.media_typed_id	)
+						callback(res,row.media_typed_id,user);
+						return(row.media_typed_id);
+					});
+				}else{
+					return false;
+				}
+			});
+		});
+	}
+	function owns(userId,media_id,res,callback) {
+			console.log(userId);
+			pg.connect(config.creds.psql_con_string,function(err,client,done){
+				utils.psqlConnectErrorHandler(err);
+				var get_user_query = "SELECT owns_id FROM mediatech.owns " +
+									"WHERE user = $1 AND media_id = $2 AND type = 1";
+				var get_user = client.query({
+					name: "get_user",
+					text: get_user_query,
+					values : [userId,media_id]
+				});
+				get_user.on('end',function(result){
+					if( result.rowCount >= 1){
+						
+						return(false);
+					}else{
+						console.log('fuck it');
+						var insert_owns_query = 'INSERT INTO mediatech.owns('+
+											'owns_id, "user", type, media_id)'+
+											'VALUES (DEFAULT,$1,1,$2) RETURNING owns_id';
+						var insert_owns = client.query({
+							name: "set_owns",
+							text: insert_owns_query,
+							values : [userId,media_id]
+						});
+						console.log(insert_owns);
+						insert_owns.on('error', function(error){
+							   console.error('error running query',error);
+							});
+						var owns_id;
+						insert_owns.on('row',function(row){
+							console.log("pouet")
+							owns_id = row.owns_id;
+							console.log(owns_id);
+						});
+						insert_owns.on('end',function(result){
+							callback(res,media_id);
+							return(row.owns_id);
+						});
+					}
+				});
+			});
+	}
 	function postVinyles(req, res, next) {
 		pg.connect(config.creds.psql_con_string,function(err,client,done){
-		        utils.psqlConnectErrorHandler(err);
+			utils.psqlConnectErrorHandler(err);
 			var v = {
 				code : req.params.code,
 				artist : req.params.artist,
 				title : req.params.title,
 				year : req.params.year,
 				description : req.params.description,
-				picture : req.params.picture
+				picture : req.params.picture,
+				user : req.params.user
 			}
+
 			var artist_query = client.query({
 				name : "get_artists",
 				text:"SELECT id FROM mediatech.artists WHERE name = $1;",
 				values:[v.artist]})
-			var artist_id ;
+				var artist_id  = new Array();
+			var user_id;
 			artist_query.on('row',function(row){
 				artist_id = row.id;
 			});
 			artist_query.on('end',function(result){
-				if(result.rowCount == 1){
-			 		console.log('artist found');
-					
-					var query = client.query({ 
-						name :"add_record", 
-						text:"INSERT INTO mediatech.vinyles (title,serial_nbr,year,description,img,artist) VALUES ($1,$2,$3,$4,$5,$6);",
-						values:[v.title,v.code,v.year,v.description,v.picture,artist_id]
-					},function(err,result){
-                        			if(err){
-                        	        		return console.error('error running query',err);
-                        	        		client.end();
-							res.send(501,err);
-                        			}
-                        			done();
-                        			res.send(201);
+				if(result.rowCount >= 1){
+					console.log('artist found');
+					 var user_query = client.query({
+						name : "get_user",
+						text:"SELECT id FROM mediatech.users WHERE name = $1;",
+						values:[v.user]
 					});
-				}else{
-					done();
-					res.send(403,"No Artist Found");
-				}
+					 var userId = 0;
+			 		user_query.on('row',function(row){
+			 			userId = row.id;
+			 		})
+					user_query.on('end',function(userResult){
+						console.log(userId)
+						if(userResult.rowCount >= 1){
+							
+							
+							var query = client.query({ 
+							name :"add_record", 
+							text:'INSERT INTO mediatech.vinyles (id,title,serial_nbr,year,description,img,artist)'+
+									'VALUES (DEFAULT,$1,$2,$3,$4,$5,$6) RETURNING id;',
+							values:[
+							        v.title,
+							        v.code,
+							        v.year,
+							        v.description,
+							        v.picture,
+							        artist_id
+							       ]
+						},function(err,result){
+							if(err){
+								return console.error('error running query',err);
+								client.end();
+								res.send(501,err);
+							}else{
+								setMediaId('vinyles',result.rows[0].id,res,userId,function(res,media_id,userId){
+									console.log('fouck ? ')
+									owns(userId,media_id,res,function(res,media_id){
+										res.send(201,media_id);
+									})
+								})
+							}
+							console.log(result.rows[0].id);
+							done();
+							
+						});
+					}else{
+						done();
+						res.send(404,"User Not Found");
+					}
+				});
+			}else{
+				done();
+				res.send(404,"No Artist Found");
+			}
 			});
 		});
+	}
+	
+	function getUserId(user){
+		console.log('inside getUserId')
+		if(user.length <2){
+			return(false);
+		}else{
+			pg.connect(config.creds.psql_con_string,function(err,client,done){
+				utils.psqlConnectErrorHandler(err);
+				var query = 'SELECT id FROM mediatech.users WHERE name = $1'
+				 var user_query = client.query({
+						name : "get_user",
+						text:query,
+						values:[user]
+					});
+				user_query.on('error', function(error){
+					   console.error('error running query user ID query',error);
+					});
+				user_query.on('end',function(result){
+					if(result.rowCount == 1){
+						console.log(result.rows)
+						return(result.rows[0].id);
+					}else{
+						return(false);
+					}
+				})
+			})	
+		}
+		
 	}
 	function getVinyles(req, res, next) {
 		var queryBegining = 'SELECT * FROM mediatech.vinyles';
 		var queryEnding = ' ORDER BY id';
 		var queryMidle = '';
 		if(req.params.filterName !== undefined){
-                                        if(req.params.filterValue === undefined){
-                                                console.error("No Value to get Vinyl filter");
-                                        }else{
-                                                queryMidle = ' WHERE '+req.params.filterName+' = '+req.params.filterValue;
-                                                console.log('Filter '+req.params.filterName+' with value '+req.params.filterValue);
-                                        }
-                                }
+				if(req.params.filterValue === undefined){
+						console.error("No Value to get Vinyl filter");
+				}else{
+						queryMidle = ' WHERE '+req.params.filterName+' = '+req.params.filterValue;
+						console.log('Filter '+req.params.filterName+' with value '+req.params.filterValue);
+				}
+		}
 		
-		console.log('pouet2');
+
 		pg.connect(config.creds.psql_con_string,function(err,client,done){
                          utils.psqlConnectErrorHandler(err);
-			console.log('pouet3');
+
 			var fullquery = queryBegining+queryMidle+queryEnding; 
-			console.log(fullquery);
 			var query = client.query(fullquery);
 			query.on('error', function(error){
 				console.error('error running query',error);
@@ -374,4 +546,5 @@ exports.postGenres = postGenres;
 exports.getGenres = getGenres;
 exports.getArtists = getArtists;
 exports.getVinyles = getVinyles;
+exports.getUsers = getUsers;
 exports.getIndex = getIndex;

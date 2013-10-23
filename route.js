@@ -3,7 +3,8 @@ module.exports = function (server,requestHandlers) {
 
 	server.get('/', requestHandlers.getIndex);
 	server.post('/messages',requestHandlers.postMessage);
-	server.post('/user',requestHandlers.postUser);
+	server.post('/users',requestHandlers.postUser);
+	server.get('/users',requestHandlers.getUsers);
 	server.put('/vinyles/:vinyle_id',requestHandlers.updateVinyles);
 	server.put('/artists/:artist_id',requestHandlers.updateArtists);
 	server.post('/vinyles',requestHandlers.postVinyles);
